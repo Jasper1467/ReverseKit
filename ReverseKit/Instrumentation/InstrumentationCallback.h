@@ -16,8 +16,12 @@ inline std::vector<FunctionCallInfo> function_calls;
 extern "C" void InstrumentationCallbackThunk(void);
 extern "C" void InstrumentationCallback(PCONTEXT ctx);
 
-#define RIP_SANITY_CHECK(Rip, BaseAddress, ModuleSize) ((Rip > BaseAddress) && (Rip < (BaseAddress + ModuleSize)))
-#define MAX_DLLS 1
+#define RIP_SANITY_CHECK(Rip, BaseAddress, ModuleSize) (((Rip) > (BaseAddress)) && ((Rip) < ((BaseAddress) + (ModuleSize))))
+
+enum
+{
+	MAX_DLLS = 1
+};
 
 struct ProcessInstrumentationCallbackInfo_t {
     ULONG Version;

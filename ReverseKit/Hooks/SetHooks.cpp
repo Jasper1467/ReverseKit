@@ -1,47 +1,49 @@
 #include "SetHooks.h"
 
-#include <sstream>
+#include <Windows.h>
 #include <Psapi.h>
+#include <sstream>
 
 void SetHooks::HookSyscalls()
 {
-	oCreateProcessInternalW = (CreateProcessInternalW_t)GetProcAddress(GetModuleHandleA("kernelbase.dll"), "CreateProcessInternalW");
+	oCreateProcessInternalW = reinterpret_cast<CreateProcessInternalW_t>(GetProcAddress(GetModuleHandleA("kernelbase.dll"), "CreateProcessInternalW"));
 	if (oCreateProcessInternalW)
 		ReverseHook::hook(oCreateProcessInternalW, hkCreateProcessInternalW, original_createprocess_bytes);
 
-	oNtCreateThreadEx = (NtCreateThreadEx_t)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtCreateThreadEx");
+	oNtCreateThreadEx = reinterpret_cast<NtCreateThreadEx_t>(GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtCreateThreadEx"));
 	if (oNtCreateThreadEx)
 		ReverseHook::hook(oNtCreateThreadEx, hkNtCreateThreadEx, original_createthread_bytes);
 
-	oURLDownloadToFileA = (URLDownloadToFileA_t)GetProcAddress(GetModuleHandleA("urlmon.dll"), "URLDownloadToFileA");
+	oURLDownloadToFileA = reinterpret_cast<URLDownloadToFileA_t>(GetProcAddress(GetModuleHandleA("urlmon.dll"), "URLDownloadToFileA"));
 	if (oURLDownloadToFileA)
 		ReverseHook::hook(oURLDownloadToFileA, hkURLDownloadToFileA, original_urlmoniker_bytes);
 
-	oInternetOpenUrlW = (InternetOpenUrlW_t)GetProcAddress(GetModuleHandleA("wininet.dll"), "InternetOpenUrlW");
+	oInternetOpenUrlW = reinterpret_cast<InternetOpenUrlW_t>(GetProcAddress(GetModuleHandleA("wininet.dll"), "InternetOpenUrlW"));
 	if (oInternetOpenUrlW)
 		ReverseHook::hook(oInternetOpenUrlW, hkInternetOpenUrlW, original_openurl_bytes);
 
-	oIsDebuggerPresent = (IsDebuggerPresent_t)GetProcAddress(GetModuleHandleA("kernel32.dll"), "IsDebuggerPresent");
+	oIsDebuggerPresent = reinterpret_cast<IsDebuggerPresent_t>(GetProcAddress(GetModuleHandleA("kernel32.dll"), "IsDebuggerPresent"));
 	if (oIsDebuggerPresent)
 		ReverseHook::hook(oIsDebuggerPresent, hkIsDebuggerPresent, original_isdebug_bytes);
 
-	oCheckRemoteDebuggerPresent = (CheckRemoteDebuggerPresent_t)GetProcAddress(GetModuleHandleA("kernel32.dll"), "CheckRemoteDebuggerPresent");
+	oCheckRemoteDebuggerPresent = reinterpret_cast<CheckRemoteDebuggerPresent_t>(GetProcAddress(GetModuleHandleA("kernel32.dll"),
+		"CheckRemoteDebuggerPresent"));
 	if (oCheckRemoteDebuggerPresent)
 		ReverseHook::hook(oCheckRemoteDebuggerPresent, hkCheckRemoteDebuggerPresent, original_remotedebug_bytes);
 
-	oRtlAdjustPrivilege = (RtlAdjustPrivilege_t)GetProcAddress(GetModuleHandleA("ntdll.dll"), "RtlAdjustPrivilege");
+	oRtlAdjustPrivilege = reinterpret_cast<RtlAdjustPrivilege_t>(GetProcAddress(GetModuleHandleA("ntdll.dll"), "RtlAdjustPrivilege"));
 	if (oRtlAdjustPrivilege)
 		ReverseHook::hook(oRtlAdjustPrivilege, hkRtlAdjustPrivilege, original_rtladjustprivilege_bytes);
 
-	oRegOpenKeyExW = (RegOpenKeyExW_t)GetProcAddress(GetModuleHandleA("advapi32.dll"), "RegOpenKeyExW");
+	oRegOpenKeyExW = reinterpret_cast<RegOpenKeyExW_t>(GetProcAddress(GetModuleHandleA("advapi32.dll"), "RegOpenKeyExW"));
 	if (oRegOpenKeyExW)
 		ReverseHook::hook(oRegOpenKeyExW, hkRegOpenKeyExW, original_regopenkey_bytes);
 
-	oWriteProcessMemory = (WriteProcessMemory_t)GetProcAddress(GetModuleHandleA("kernel32.dll"), "WriteProcessMemory");
+	oWriteProcessMemory = reinterpret_cast<WriteProcessMemory_t>(GetProcAddress(GetModuleHandleA("kernel32.dll"), "WriteProcessMemory"));
 	if (oWriteProcessMemory)
 		ReverseHook::hook(oWriteProcessMemory, hkWriteProcessMemory, original_writeprocessmemory_bytes);
 
-	oGetProcAddress = (GetProcAddress_t)GetProcAddress(GetModuleHandleA("kernel32.dll"), "GetProcAddress");
+	oGetProcAddress = reinterpret_cast<GetProcAddress_t>(GetProcAddress(GetModuleHandleA("kernel32.dll"), "GetProcAddress"));
 	if (oGetProcAddress)
 		ReverseHook::hook(oGetProcAddress, hkGetProcAddress, original_getprocaddress_bytes);
 }
@@ -180,7 +182,7 @@ NTSTATUS NTAPI SetHooks::hkNtCreateThreadEx(OUT PHANDLE ThreadHandle, IN ACCESS_
 	Temp.functionName = "NtCreateThreadEx";
 
 	char buffer[64];
-	sprintf(buffer, "Created Thread: %p", StartRoutine);
+	int nErr = sprintf_s(buffer, "Created Thread: %p", StartRoutine);
 	Temp.additionalInfo = buffer;
 
 	interceptedCalls.push_back(Temp);
@@ -225,7 +227,7 @@ NTSTATUS NTAPI SetHooks::hkRtlAdjustPrivilege(ULONG Privilege,
 	*/
 
 	// https://www.pinvoke.net/default.aspx/ntdll/RtlAdjustPrivilege.html
-	if (Privilege == (int)19/*SeShutdownPrivilege*/ || Privilege == (int)20/*SeDebugPrivilege*/)
+	if (Privilege == 19/*SeShutdownPrivilege*/ || Privilege == 20/*SeDebugPrivilege*/)
 	{
 		InterceptedCallInfo info;
 		info.functionName = "RtlAdjustPrivilege";
@@ -296,6 +298,7 @@ FARPROC SetHooks::hkGetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 	
 	ReverseHook::unhook(oGetProcAddress, original_getprocaddress_bytes);
 
+	// Prevent sysmon driver from being unloaded
 	auto result = oGetProcAddress(hModule, lpProcName);
 	if (result == oGetProcAddress(LoadLibraryA("sysmondrv"), "Unload"))
 	{

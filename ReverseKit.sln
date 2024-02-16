@@ -5,7 +5,7 @@ VisualStudioVersion = 17.5.33627.172
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReverseKit", "ReverseKit\ReverseKit.vcxproj", "{65168E17-B306-407F-865A-3F130984BD1E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReverseKitLoader", "ReverseKitLoader\ReverseKitLoader.vcxproj", "{10D05F6A-DF92-4319-9139-F29ED5AA43D9}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReverseKitLoader", "ReverseKitLoaderCLI\ReverseKitLoaderCLI.vcxproj", "{10D05F6A-DF92-4319-9139-F29ED5AA43D9}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test", "Test\Test.vcxproj", "{DF56ABA6-C48F-4ED3-8B3C-562D6DBCB129}"
 EndProject

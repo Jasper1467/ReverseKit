@@ -29,9 +29,9 @@ void DrawInstrumentationInformation()
 	ImGui::Text("Return Address"); ImGui::NextColumn();
 	ImGui::Separator();
 
-	for (auto& call_info : function_calls) {
-		ImGui::Text("%s", call_info.function_name.c_str()); ImGui::NextColumn();
-		ImGui::Text("%p", call_info.return_address); ImGui::NextColumn();
+	for (auto& [function_name, return_address] : function_calls) {
+		ImGui::Text("%s", function_name.c_str()); ImGui::NextColumn();
+		ImGui::Text("%p", return_address); ImGui::NextColumn();
 	}
 
 	ImGui::End();
@@ -49,13 +49,13 @@ void DrawThreadInformation()
 	ImGui::Text(""); ImGui::NextColumn();
 	ImGui::Separator();
 
-	for (const auto& info : threadInfo) {
-		ImGui::Text("%lu", info.threadId); ImGui::NextColumn();
-		ImGui::Text("%u%%", info.cpuUsage); ImGui::NextColumn();
+	for (const auto& [threadId, cpuUsage] : threadInfo) {
+		ImGui::Text("%lu", threadId); ImGui::NextColumn();
+		ImGui::Text("%u%%", cpuUsage); ImGui::NextColumn();
 
 		if (ImGui::Button("Suspend")) {
-			const HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, info.threadId);
-			if (hThread != nullptr) {
+			if (const HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadId);
+				hThread != nullptr) {
 				SuspendThread(hThread);
 				CloseHandle(hThread);
 			}
@@ -78,10 +78,10 @@ void DrawImports()
 	ImGui::Text("Function Address"); ImGui::NextColumn();
 	ImGui::Separator();
 
-	for (const auto& info : imports) {
-		ImGui::Text(info.dllName.c_str()); ImGui::NextColumn();
-		ImGui::Text(info.functionName.c_str()); ImGui::NextColumn();
-		ImGui::Text("%p", info.functionAddress); ImGui::NextColumn();
+	for (const auto& [dllName, functionName, functionAddress] : imports) {
+		ImGui::Text(dllName.c_str()); ImGui::NextColumn();
+		ImGui::Text(functionName.c_str()); ImGui::NextColumn();
+		ImGui::Text("%p", functionAddress); ImGui::NextColumn();
 	}
 
 	ImGui::End();
@@ -97,19 +97,19 @@ void DrawHookedFunctions()
 	for (const auto& call : SetHooks::interceptedCalls)
 		functionCalls[call.functionName].push_back(call);
 
-	for (const auto& pair : functionCalls)
+	for (const auto& [fst, snd] : functionCalls)
 	{
-		const std::string& functionName = pair.first;
-		const std::vector<InterceptedCallInfo>& calls = pair.second;
+		const std::string& functionName = fst;
+		const std::vector<InterceptedCallInfo>& calls = snd;
 
 		ImGui::SetNextTreeNodeOpen(true, ImGuiCond_FirstUseEver);
 		if (ImGui::CollapsingHeader(functionName.c_str()))
 		{
-			for (const auto& call : calls)
+			for (const auto& [functionName, additionalInfo] : calls)
 			{
-				if (ImGui::Selectable(call.additionalInfo.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick))
+				if (ImGui::Selectable(additionalInfo.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick))
 				{
-					ImGui::SetClipboardText(call.additionalInfo.c_str());
+					ImGui::SetClipboardText(additionalInfo.c_str());
 				}
 			}
 		}
@@ -120,7 +120,7 @@ void DrawHookedFunctions()
 	ImGui::End();
 }
 
-const char* HeapFlagsStr(DWORD flags)
+const char* HeapFlagsStr(const DWORD flags)
 {
 	switch (flags)
 	{
@@ -147,10 +147,10 @@ void DrawHeaps()
 	ImGui::Text("Address"); ImGui::NextColumn();
 	ImGui::Separator();
 
-	for (const auto& info : heaps) {
-		ImGui::Text("%s", HeapFlagsStr(info.flags)); ImGui::NextColumn();
-		ImGui::Text("%i", info.id); ImGui::NextColumn();
-		ImGui::Text("%p", info.address); ImGui::NextColumn();
+	for (const auto& [address, id, flags] : heaps) {
+		ImGui::Text("%s", HeapFlagsStr(flags)); ImGui::NextColumn();
+		ImGui::Text("%i", id); ImGui::NextColumn();
+		ImGui::Text("%p", address); ImGui::NextColumn();
 	}
 
 	ImGui::End();
@@ -175,8 +175,8 @@ void RenderUI()
 
 	ImGui::Begin("[ReverseKit] Main Menu", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
 
-	const ImVec4 activeButtonColor = ImVec4(0.2f, 0.6f, 1.0f, 1.0f);
-	const ImVec4 inactiveButtonColor = ImVec4(0.3f, 0.3f, 0.3f, 1.0f);
+	const auto activeButtonColor = ImVec4(0.2f, 0.6f, 1.0f, 1.0f);
+	const auto inactiveButtonColor = ImVec4(0.3f, 0.3f, 0.3f, 1.0f);
 
 	if (showImports)
 		ImGui::PushStyleColor(ImGuiCol_Button, activeButtonColor);

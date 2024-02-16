@@ -22,8 +22,9 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{10d05f6a-df92-4319-9139-f29ed5aa43d9}</ProjectGuid>
-    <RootNamespace>ReverseKitLoader</RootNamespace>
+    <RootNamespace>ReverseKitLoaderCLI</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>ReverseKitLoaderCLI</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -148,11 +149,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ReverseKitLoader.cpp" />
+    <ClCompile Include="ReverseKitLoaderCLI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Injection\GetProcAddressR.h" />
-    <ClInclude Include="ReverseKitLoader.h" />
+    <ClInclude Include="ReverseKitLoaderCLI.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

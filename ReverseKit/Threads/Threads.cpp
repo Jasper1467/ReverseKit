@@ -1,6 +1,6 @@
 #include "Threads.h"
 
-#include <TlHelp32.h>
+#include <tlhelp32.h>
 
 void GetThreadInformation() {
 	const DWORD processID = GetCurrentProcessId();
@@ -36,13 +36,13 @@ void GetThreadInformation() {
 			continue;
 		}
 
-		const ULONGLONG kernelTimeDiff = (((ULONGLONG)kernelTime.dwHighDateTime) << 32) | kernelTime.dwLowDateTime;
-		const ULONGLONG userTimeDiff = (((ULONGLONG)userTime.dwHighDateTime) << 32) | userTime.dwLowDateTime;
+		const ULONGLONG kernelTimeDiff = static_cast<ULONGLONG>(kernelTime.dwHighDateTime) << 32 | kernelTime.dwLowDateTime;
+		const ULONGLONG userTimeDiff = static_cast<ULONGLONG>(userTime.dwHighDateTime) << 32 | userTime.dwLowDateTime;
 		const ULONGLONG elapsedTime = kernelTimeDiff + userTimeDiff;
 		const ULONGLONG systemTime = GetTickCount64() * 10000;  // Convert from milliseconds to 100-nanosecond intervals
 		const DWORD cpuUsage = static_cast<DWORD>((elapsedTime * 100) / systemTime);
 
-		auto it = std::find_if(threadInfo.begin(), threadInfo.end(), [&](const ThreadInfo& info) {
+		auto it = std::ranges::find_if(threadInfo, [&](const ThreadInfo& info) {
 			return info.threadId == te32.th32ThreadID;
 			});
 

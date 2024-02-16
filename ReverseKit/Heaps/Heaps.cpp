@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <Windows.h>
+// ReSharper disable once CppWrongIncludesOrder
 #include <TlHelp32.h>
 
 void GetHeapsInformation()
@@ -16,7 +17,7 @@ void GetHeapsInformation()
 	{
 		do
 		{
-			HANDLE hProcess = GetCurrentProcess();
+			[[maybe_unused]] HANDLE hProcess = GetCurrentProcess();
 			HEAPENTRY32 heapEntry = { sizeof(HEAPENTRY32) };
 
 			// Start with the first heap of the process
@@ -31,8 +32,8 @@ void GetHeapsInformation()
 				info.flags = heapEntry.dwFlags;
 
 				bool alreadyExists = false;
-				for (const auto& heap : heaps) {
-					if (heap.address == info.address && heap.flags == info.flags && heap.id == info.id) {
+				for (const auto& [address, id, flags] : heaps) {
+					if (address == info.address && flags == info.flags && id == info.id) {
 						alreadyExists = true;
 						break;
 					}

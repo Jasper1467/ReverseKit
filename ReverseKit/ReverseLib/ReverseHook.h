@@ -1,7 +1,5 @@
 #pragma once
 
-#include <Windows.h>
-
 namespace ReverseHook
 {
     void hook(void* original_function, void* hooked_function, unsigned char* original_bytes);

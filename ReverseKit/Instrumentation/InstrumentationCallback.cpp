@@ -3,7 +3,7 @@
 static DLL_INFO dlls[MAX_DLLS];
 static DWORD numDlls = 0;
 
-void Instrumentation::AddDllInfo(LPCTSTR lpDllName, ULONG_PTR baseAddress, DWORD size)
+void Instrumentation::AddDllInfo(const LPCTSTR lpDllName, const ULONG_PTR baseAddress, const DWORD size)
 {
 	if (numDlls >= MAX_DLLS)
 		return;
@@ -14,7 +14,7 @@ void Instrumentation::AddDllInfo(LPCTSTR lpDllName, ULONG_PTR baseAddress, DWORD
 	numDlls++;
 }
 
-PDLL_INFO Instrumentation::GetDllInfo(ULONG_PTR Rip)
+PDLL_INFO Instrumentation::GetDllInfo(const ULONG_PTR Rip)
 {
 	for (DWORD i = 0; i < numDlls; i++)
 	{
@@ -22,16 +22,15 @@ PDLL_INFO Instrumentation::GetDllInfo(ULONG_PTR Rip)
 			return &dlls[i];
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 void Instrumentation::GetBaseAddresses()
 {
-	HMODULE hNtDll = GetModuleHandleA("ntdll.dll");
-	if (hNtDll) {
-		PIMAGE_DOS_HEADER piDH = (PIMAGE_DOS_HEADER)hNtDll;
-		PIMAGE_NT_HEADERS piNH = (PIMAGE_NT_HEADERS)((ULONG_PTR)hNtDll + piDH->e_lfanew);
-		AddDllInfo(TEXT("ntdll.dll"), (ULONG_PTR)hNtDll, piNH->OptionalHeader.SizeOfImage);
+	if (HMODULE hNtDll = GetModuleHandleA("ntdll.dll")) {
+		const auto piDH = reinterpret_cast<PIMAGE_DOS_HEADER>(hNtDll);
+		const auto piNH = reinterpret_cast<PIMAGE_NT_HEADERS>(reinterpret_cast<ULONG_PTR>(hNtDll) + piDH->e_lfanew);
+		AddDllInfo(TEXT("ntdll.dll"), reinterpret_cast<ULONG_PTR>(hNtDll), piNH->OptionalHeader.SizeOfImage);
 	}
 
 	/*
@@ -53,14 +52,11 @@ void Instrumentation::GetBaseAddresses()
 
 uintptr_t Instrumentation::GetProcAddress(void* hModule, const char* wAPIName)
 {
-	unsigned char* lpBase = reinterpret_cast<unsigned char*>(hModule);
-	const IMAGE_DOS_HEADER* idhDosHeader = reinterpret_cast<IMAGE_DOS_HEADER*>(lpBase);
-	if (idhDosHeader->e_magic == IMAGE_DOS_SIGNATURE)
+	auto lpBase = static_cast<unsigned char*>(hModule);
+	if (const IMAGE_DOS_HEADER* idhDosHeader = reinterpret_cast<IMAGE_DOS_HEADER*>(lpBase); idhDosHeader->e_magic == IMAGE_DOS_SIGNATURE)
 	{
-		const IMAGE_NT_HEADERS64* inhNtHeader = reinterpret_cast<IMAGE_NT_HEADERS64*>(
-			lpBase + idhDosHeader->e_lfanew);
-
-		if (inhNtHeader->Signature == IMAGE_NT_SIGNATURE)
+		if (const IMAGE_NT_HEADERS64* inhNtHeader = reinterpret_cast<IMAGE_NT_HEADERS64*>(
+			lpBase + idhDosHeader->e_lfanew); inhNtHeader->Signature == IMAGE_NT_SIGNATURE)
 		{
 			const IMAGE_EXPORT_DIRECTORY* iedExportDirectory
 				= reinterpret_cast<IMAGE_EXPORT_DIRECTORY*>(
@@ -90,15 +86,14 @@ bool Instrumentation::Initialize()
 	SymInitialize(GetCurrentProcess(), nullptr, TRUE);
 
 	using NtSetInformationProcess_t = NTSTATUS(NTAPI*)(HANDLE, PROCESS_INFORMATION_CLASS, PVOID, ULONG);
-	const NtSetInformationProcess_t NtSetInformationProcess = (NtSetInformationProcess_t)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtSetInformationProcess");
 
-	if (NtSetInformationProcess)
+	if (const auto NtSetInformationProcess = reinterpret_cast<NtSetInformationProcess_t>(GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtSetInformationProcess")))
 	{
 		ProcessInstrumentationCallbackInfo_t CallbackInfo = { 0, 0,
-			(PVOID)(ULONG_PTR)InstrumentationCallbackThunk };
+			reinterpret_cast<PVOID>(reinterpret_cast<ULONG_PTR>(InstrumentationCallbackThunk)) };
 
-		NtSetInformationProcess(GetCurrentProcess(), (PROCESS_INFORMATION_CLASS)40,
-			&CallbackInfo, sizeof(CallbackInfo));
+		[[maybe_unused]] NTSTATUS Rtn = NtSetInformationProcess(GetCurrentProcess(), static_cast<PROCESS_INFORMATION_CLASS>(40),
+		                                                      &CallbackInfo, sizeof(CallbackInfo));
 
 		return true;
 	}
@@ -106,28 +101,26 @@ bool Instrumentation::Initialize()
 	return false;
 }
 
+// ReSharper disable once CppParameterMayBeConst
 void InstrumentationCallback(PCONTEXT ctx)
 {
-	const ULONG_PTR pTEB = (ULONG_PTR)NtCurrentTeb();
+	const ULONG_PTR pTEB = reinterpret_cast<ULONG_PTR>(NtCurrentTeb());
     if (!pTEB) {
         RtlRestoreContext(ctx, nullptr);
     }
 
-    ctx->Rip = *((ULONG_PTR*)(pTEB + 0x02D8)); // TEB->InstrumentationCallbackPreviousPc
-    ctx->Rsp = *((ULONG_PTR*)(pTEB + 0x02E0)); // TEB->InstrumentationCallbackPreviousSp
+    ctx->Rip = *reinterpret_cast<ULONG_PTR*>(pTEB + 0x02D8); // TEB->InstrumentationCallbackPreviousPc
+    ctx->Rsp = *reinterpret_cast<ULONG_PTR*>(pTEB + 0x02E0); // TEB->InstrumentationCallbackPreviousSp
     ctx->Rcx = ctx->R10;
 
-	const BOOLEAN bInstrumentationCallbackDisabled = *((BOOLEAN*)pTEB + 0x1b8);
-
-    if (!bInstrumentationCallbackDisabled)
+	if (const BOOLEAN bInstrumentationCallbackDisabled = *(reinterpret_cast<BOOLEAN*>(pTEB) + 0x1b8);
+		!bInstrumentationCallbackDisabled)
     {
-        *((BOOLEAN*)pTEB + 0x1b8) = TRUE;
+        *(reinterpret_cast<BOOLEAN*>(pTEB) + 0x1b8) = TRUE;
 
         if (GetAsyncKeyState(VK_F1))
         {
-	        const PDLL_INFO pDllInfo = Instrumentation::GetDllInfo(ctx->Rip);
-
-            if (pDllInfo)
+	        if (const PDLL_INFO pDllInfo = Instrumentation::GetDllInfo(ctx->Rip))
             {
                 if (!pDllInfo->baseAddress) {
                     RtlRestoreContext(ctx, nullptr);
@@ -140,20 +133,20 @@ void InstrumentationCallback(PCONTEXT ctx)
 
                 RtlSecureZeroMemory(SymbolBuffer, sizeof(SYMBOL_INFO) + MAX_SYM_NAME);
 
-                const PSYMBOL_INFO SymbolInfo = (PSYMBOL_INFO)SymbolBuffer;
+                const PSYMBOL_INFO SymbolInfo = static_cast<PSYMBOL_INFO>(SymbolBuffer);
                 SymbolInfo->SizeOfStruct = sizeof(SYMBOL_INFO);
                 SymbolInfo->MaxNameLen = MAX_SYM_NAME;
 
                 DWORD64 Displacement;
-                const BOOL SymbolLookupResult = SymFromAddr(GetCurrentProcess(), ctx->Rip, &Displacement, SymbolInfo);
 
-                if (!SymbolLookupResult || !SymbolInfo) {
+                if (const BOOL SymbolLookupResult = SymFromAddr(GetCurrentProcess(), ctx->Rip, &Displacement, SymbolInfo);
+					!SymbolLookupResult || !SymbolInfo) {
                     free(SymbolBuffer);
                     RtlRestoreContext(ctx, nullptr);
                 }
 
-                const uintptr_t pFunction = Instrumentation::GetProcAddress((PVOID)pDllInfo->baseAddress, SymbolInfo->Name);
-				const ULONG_PTR ReturnAddress = *((ULONG_PTR*)(ctx->Rsp));
+                const uintptr_t pFunction = Instrumentation::GetProcAddress(reinterpret_cast<PVOID>(pDllInfo->baseAddress), SymbolInfo->Name);
+				const ULONG_PTR ReturnAddress = *reinterpret_cast<ULONG_PTR*>(ctx->Rsp);
 
                 if (!pFunction || !ReturnAddress) {
                     free(SymbolBuffer);
@@ -169,7 +162,7 @@ void InstrumentationCallback(PCONTEXT ctx)
             }
         }
 
-        *((BOOLEAN*)pTEB + 0x1b8) = FALSE;
+        *(reinterpret_cast<BOOLEAN*>(pTEB) + 0x1b8) = FALSE;
     }
     RtlRestoreContext(ctx, nullptr);
 }

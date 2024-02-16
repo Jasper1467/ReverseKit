@@ -1,18 +1,17 @@
 #pragma once
-#include "../ReverseLib/ReverseHook.h"
 #include "../ReverseLib/Includes.h"
+#include "../ReverseLib/ReverseHook.h"
 
-#include <unordered_map>
 #include <codecvt>
 #include <locale>
+#include <unordered_map>
 
 inline std::string ws2s(const std::wstring& wstr) {
 	const std::wstring_view wsv(wstr);
 	std::string result;
-	std::mbstate_t state = std::mbstate_t();
+	auto state = std::mbstate_t();
 	const wchar_t* pwcs = wsv.data();
-	const size_t len = std::wcsrtombs(nullptr, &pwcs, 0, &state);
-	if (len != static_cast<size_t>(-1)) {
+	if (const size_t len = std::wcsrtombs(nullptr, &pwcs, 0, &state); len != static_cast<size_t>(-1)) {
 		result.resize(len);
 		std::wcsrtombs(result.data(), &pwcs, len, &state);
 	}

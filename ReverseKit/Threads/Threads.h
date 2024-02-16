@@ -1,7 +1,6 @@
 #pragma once
-#include <Windows.h>
 #include <vector>
-
+#include <Windows.h>
 struct ThreadInfo
 {
     DWORD threadId;
